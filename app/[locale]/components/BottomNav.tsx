@@ -27,8 +27,7 @@ export default function BottomNav() {
           const active = strip(pathname) === item.href;
           return (
             <li key={item.href} className="flex-1">
-              <Link
-                href={`/${item.href === "/" ? "" : item.href}`}
+              <Link href={item.href}
                 className={`flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-sm min-w-[44px] ${
                   item.highlight
                     ? "text-white"

@@ -1,0 +1,40 @@
+# Render Blueprint — deploys this Next.js app as a Web Service.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# First deploy:
+#   1. Push this file to your GitHub repo.
+#   2. In the Render dashboard: New → Blueprint → select the repo.
+#   3. Fill in the sync=False env vars when prompted (they are secrets,
+#      so they are NOT stored in this file):
+#        - NEXT_PUBLIC_SUPABASE_URL        (project settings → API)
+#        - NEXT_PUBLIC_SUPABASE_ANON_KEY   (anon/public key)
+#        - CEREBRAS_API_KEY                (cloud.cerebras.ai)
+#        - GROQ_API_KEY                    (console.groq.com/keys)
+#   4. If the first build ran before the NEXT_PUBLIC_* vars were added,
+#      trigger "Manual Deploy → Clear cache & deploy" so Next.js bakes
+#      them in at build time.
+
+services:
+  - type: web
+    name: outage-tracker
+    runtime: node
+    plan: free # upgrade to "starter" ($7/mo) for always-on (no cold starts)
+    region: frankfurt # closest region to Cameroon/Douala; change if preferred
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true # redeploy on every push to the branch
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      # Secrets are set in the Render dashboard, not committed here.
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: CEREBRAS_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
