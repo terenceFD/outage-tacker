@@ -1,0 +1,139 @@
+{
+  "app": {
+    "title": "Suivi des coupures",
+    "description": "Suivez les coupures d'électricité (ENEO) et d'eau (Camwater) dans votre quartier"
+  },
+  "nav": {
+    "home": "Accueil",
+    "map": "Carte",
+    "report": "Signaler",
+    "alerts": "Alertes",
+    "stats": "Statistiques"
+  },
+  "home": {
+    "chatAssistant": "Demander à l'assistant IA",
+    "heading": "Suivi des coupures",
+    "searchPlaceholder": "Rechercher votre quartier...",
+    "reportButton": "Signaler une coupure",
+    "affected": "Touchés maintenant"
+  },
+  "services": {
+    "power": "ÉLECTRICITÉ",
+    "water": "EAU",
+    "quartiersOut": "{count} quartiers coupés",
+    "quartiersDry": "{count} quartiers sans eau"
+  },
+  "status": {
+    "out": "Coupé",
+    "unconfirmed": "Non confirmé",
+    "ok": "Rétabli",
+    "unknown": "Pas de données"
+  },
+  "serviceType": {
+    "power": "Électricité",
+    "water": "Eau"
+  },
+  "disclaimer": "Données citoyennes, pas officielles.",
+  "report": {
+    "heading": "Signaler une coupure",
+    "step1": "1. Que s'est-il passé ?",
+    "step2": "2. Votre quartier",
+    "step3": "3. État",
+    "chooseQuartier": "Choisissez votre quartier",
+    "send": "Envoyer le signalement",
+    "statusOut": "Coupé",
+    "statusBack": "C'est revenu",
+    "rateLimitNote": "Un signalement par quartier toutes les 30 min",
+    "otpNote": "Vérifié par code téléphone (OTP)",
+    "sent": "Signalement envoyé. Merci !",
+    "describeTab": "Décrire",
+    "describeIntro": "Ou décrivez la coupure avec vos propres mots (français, anglais ou pidgin)",
+    "describePlaceholder": "ex. Pas de courant à Bonamoussadi depuis ce matin",
+    "describeSend": "Analyser avec l'IA",
+    "confidenceOk": "Compris ! Signalement créé :",
+    "confidenceAsk": "Est-ce correct ?",
+    "yes": "Oui, envoyer",
+    "change": "Modifier"
+  },
+  "quartier": {
+    "back": "Retour",
+    "noPower": "PAS D'ÉLECTRICITÉ",
+    "noWater": "PAS D'EAU",
+    "reports": "{count} signalements",
+    "confirmations": "{count} confirmations",
+    "confirm": "Moi aussi (confirmer)",
+    "recentReports": "Signalements récents",
+    "last7days": "7 derniers jours (heures sans électricité)",
+    "notFound": "Quartier introuvable"
+  },
+  "map": {
+    "heading": "Carte en direct",
+    "all": "Tout",
+    "filterAll": "Tous les services",
+    "details": "Détails ›"
+  },
+  "alerts": {
+    "heading": "Mes alertes",
+    "notify": "Me notifier par",
+    "saved": "Quartiers suivis",
+    "add": "+ Ajouter un quartier",
+    "enabled": "Activé",
+    "disabled": "Désactivé"
+  },
+  "stats": {
+    "heading": "Statistiques",
+    "month": "Octobre",
+    "reports": "{count} signalements",
+    "quartiers": "{count} quartiers",
+    "topHours": "Heures de coupure les plus élevées",
+    "hours": "{hours} h",
+    "share": "Partager ce graphique"
+  },
+  "login": {
+    "heading": "Connexion",
+    "phoneLabel": "Numéro de téléphone",
+    "phonePlaceholder": "+237 6XX XXX XXX",
+    "sendCode": "Envoyer le code",
+    "codeLabel": "Code de vérification",
+    "codePlaceholder": "Code à 6 chiffres",
+    "verify": "Vérifier",
+    "changeNumber": "Changer le numéro",
+    "resend": "Renvoyer le code",
+    "note": "Vérification par SMS. Votre numéro n'est jamais affiché publiquement."
+  },
+  "about": {
+    "heading": "Comment ça marche",
+    "intro": "Suivi des coupures est une plateforme citoyenne en temps réel des coupures d'électricité (ENEO) et d'eau (Camwater), quartier par quartier. N'importe qui peut signaler en moins de 10 secondes et les voisins confirment pour renforcer la confiance.",
+    "howTitle": "Comment un état est décidé",
+    "howSteps": [
+      "Coupé : 3 signalements ou plus d'utilisateurs différents en 30 minutes.",
+      "Non confirmé : 1–2 signalements récents, pas encore assez.",
+      "Rétabli : 2 signalements « c'est revenu », ou 1 avec confirmation.",
+      "Inconnu : aucun nouveau signalement depuis 6 heures — l'état expire."
+    ],
+    "credibilityTitle": "Comment fonctionne la crédibilité",
+    "credibilityBody": "Chaque signalement peut être confirmé par les voisins en un clic (« Moi aussi »). Plus il y a de confirmations indépendantes, plus l'état est fiable. Les abus sont limités : un signalement par utilisateur et par quartier toutes les 30 minutes, comptes vérifiés uniquement.",
+    "privacyTitle": "Confidentialité",
+    "privacyBody": "Votre numéro de téléphone est vérifié une fois et jamais affiché publiquement. Si vous utilisez l'assistant IA, seul le texte de votre message est envoyé pour analyse — jamais votre identité.",
+    "disclaimerHeading": "Important",
+    "disclaimerBody": "Cette plateforme repose sur des données citoyennes, pas officielles. Pour des informations officielles, contactez directement ENEO ou Camwater.",
+    "contact": "Contact"
+  },
+  "admin": {
+    "heading": "Administration",
+    "tabsReports": "Signalements",
+    "tabsQuartiers": "Quartiers",
+    "tabsUsers": "Utilisateurs",
+    "flagged": "Signalements signalés",
+    "approve": "Approuver",
+    "remove": "Retirer",
+    "quartierList": "Gérer la liste des quartiers",
+    "block": "Bloquer",
+    "unblock": "Débloquer",
+    "blockedUsers": "Utilisateurs bloqués",
+    "empty": "Rien en attente. Tout est en ordre.",
+    "locked": "Accès admin requis",
+    "lockedBody": "Connectez-vous avec un compte admin pour modérer les signalements et gérer les quartiers.",
+    "signIn": "Aller à la connexion"
+  }
+}

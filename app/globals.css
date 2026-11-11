@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+/* Fonts extracted from "outage tracker.pdf" (§7) and "complete.pdf" (§5 Fonts)
+   Plus Jakarta Sans (headings), Inter (body), system-ui fallback.
+   Loaded via next/font/google in layout.tsx (Latin subset, display: swap). */
+
+/* Colors extracted from "outage tracker.pdf" (§7 Design basics)
+   and "complete.pdf" (§5 Design System) */
+
+@theme {
+  /* Light theme (default) */
+  --color-primary: #14365d;
+  --color-accent: #1b7f79;
+  --color-power: #f5a623;
+  --color-water: #2f80ed;
+  --color-status-out: #d93025;
+  --color-status-unconfirmed: #f2c94c;
+  --color-status-ok: #1e9e5a;
+  --color-status-unknown: #9aa5b1;
+  --color-bg: #f6f9fb;
+  --color-surface: #ffffff;
+  --color-border: #d5dee6;
+  --color-text: #1a2733;
+  --color-muted: #5b6b7a;
+
+  /* Fonts (same tokens) */
+  --font-heading:
+    var(--font-heading-jakarta), system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+  --font-body:
+    var(--font-body-inter), system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+
+  /* Type scale from the PDFs: body 16px, small 14px, headings 20/24/32px */
+  --text-sm: 0.875rem; /* 14px small text */
+  --text-base: 1rem; /* 16px body minimum on mobile */
+  --text-lg: 1.25rem; /* 20px */
+  --text-xl: 1.5rem; /* 24px */
+  --text-2xl: 2rem; /* 32px */
+}
+
+body {
+  font-family: var(--font-body);
+}
+
+/* Card on the page background (PDF: cards sit on --color-bg) */
+.surface-card {
+  background-color: var(--surface);
+}
+
+.page-bg {
+  background-color: var(--bg);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+}
+
+:root {
+  /* Light theme */
+  --primary: #14365d;
+  --accent: #1b7f79;
+  --power: #f5a623;
+  --water: #2f80ed;
+  --status-out: #d93025;
+  --status-unconfirmed: #f2c94c;
+  --status-ok: #1e9e5a;
+  --status-unknown: #9aa5b1;
+  --bg: #f6f9fb;
+  --surface: #ffffff;
+  --border: #d5dee6;
+  --text: #1a2733;
+  --muted: #5b6b7a;
+}
+
+.dark {
+  /* Dark theme */
+  --primary: #7fb2e5;
+  --accent: #4fc3bb;
+  --power: #ffbf47;
+  --water: #5a9bf5;
+  --status-out: #ff6b60;
+  --status-unconfirmed: #f2d46b;
+  --status-ok: #4cc98a;
+  --status-unknown: #7d8895;
+  --bg: #0f1a24;
+  --surface: #172431;
+  --border: #2a3b4a;
+  --text: #e8eef3;
+  --muted: #9fb0be;
+}

@@ -1,0 +1,139 @@
+{
+  "app": {
+    "title": "Outage Tracker",
+    "description": "Track power (ENEO) and water (Camwater) outages in your quartier"
+  },
+  "nav": {
+    "home": "Home",
+    "map": "Map",
+    "report": "Report",
+    "alerts": "Alerts",
+    "stats": "Stats"
+  },
+  "home": {
+    "chatAssistant": "Ask the AI assistant",
+    "heading": "Outage Tracker",
+    "searchPlaceholder": "Search your quartier...",
+    "reportButton": "Report an outage",
+    "affected": "Affected now"
+  },
+  "services": {
+    "power": "POWER",
+    "water": "WATER",
+    "quartiersOut": "{count} quartiers out",
+    "quartiersDry": "{count} quartiers dry"
+  },
+  "status": {
+    "out": "Out",
+    "unconfirmed": "Unconfirmed",
+    "ok": "Restored",
+    "unknown": "No data"
+  },
+  "serviceType": {
+    "power": "Power",
+    "water": "Water"
+  },
+  "disclaimer": "Citizen-sourced, not official.",
+  "report": {
+    "heading": "Report an outage",
+    "step1": "1. What happened?",
+    "step2": "2. Your quartier",
+    "step3": "3. Status",
+    "chooseQuartier": "Choose your quartier",
+    "send": "Send report",
+    "statusOut": "Out",
+    "statusBack": "Back on",
+    "rateLimitNote": "One report per quartier every 30 min",
+    "otpNote": "Verified by phone code (OTP)",
+    "sent": "Report sent. Thank you!",
+    "describeTab": "Describe it",
+    "describeIntro": "Or describe the outage in your own words (English, French or Pidgin)",
+    "describePlaceholder": "e.g. We no get light for Bonamoussadi since morning",
+    "describeSend": "Parse with AI",
+    "confidenceOk": "Understood! Report created:",
+    "confidenceAsk": "Is this correct?",
+    "yes": "Yes, send",
+    "change": "Change"
+  },
+  "quartier": {
+    "back": "Back",
+    "noPower": "NO POWER",
+    "noWater": "NO WATER",
+    "reports": "{count} reports",
+    "confirmations": "{count} confirmations",
+    "confirm": "Me too (confirm)",
+    "recentReports": "Recent reports",
+    "last7days": "Last 7 days (hours without power)",
+    "notFound": "Quartier not found"
+  },
+  "map": {
+    "heading": "Live map",
+    "all": "All",
+    "filterAll": "All services",
+    "details": "Details ›"
+  },
+  "alerts": {
+    "heading": "My alerts",
+    "notify": "Notify me by",
+    "saved": "Saved quartiers",
+    "add": "+ Add quartier",
+    "enabled": "On",
+    "disabled": "Off"
+  },
+  "stats": {
+    "heading": "Stats",
+    "month": "October",
+    "reports": "{count} reports",
+    "quartiers": "{count} quartiers",
+    "topHours": "Most outage hours",
+    "hours": "{hours}h",
+    "share": "Share this chart"
+  },
+  "login": {
+    "heading": "Sign in",
+    "phoneLabel": "Phone number",
+    "phonePlaceholder": "+237 6XX XXX XXX",
+    "sendCode": "Send code",
+    "codeLabel": "Verification code",
+    "codePlaceholder": "6-digit code",
+    "verify": "Verify",
+    "changeNumber": "Change number",
+    "resend": "Resend code",
+    "note": "We verify by SMS. Your number is never shown publicly."
+  },
+  "about": {
+    "heading": "How it works",
+    "intro": "Outage Tracker is a citizen-run, real-time view of power (ENEO) and water (Camwater) outages, neighborhood by neighborhood. Anyone can report in under 10 seconds and neighbors confirm to build trust.",
+    "howTitle": "How a status is decided",
+    "howSteps": [
+      "Out: 3 or more reports from different users within 30 minutes.",
+      "Unconfirmed: 1–2 recent reports, not yet enough.",
+      "Restored: 2 \"back on\" reports, or 1 with a confirmation.",
+      "Unknown: no new reports for 6 hours — status expires."
+    ],
+    "credibilityTitle": "How credibility works",
+    "credibilityBody": "Every report can be confirmed by neighbors with one tap (\"Me too\"). The more independent confirmations, the more trustworthy the status. Abuse is limited: one report per user per quartier every 30 minutes, verified accounts only.",
+    "privacyTitle": "Privacy",
+    "privacyBody": "Your phone number is verified once and never shown publicly. If you use the AI assistant, only your message text is sent for parsing — never your identity.",
+    "disclaimerHeading": "Important",
+    "disclaimerBody": "This platform is citizen-sourced, not official. For authoritative information contact ENEO or Camwater directly.",
+    "contact": "Contact"
+  },
+  "admin": {
+    "heading": "Admin",
+    "tabsReports": "Reports",
+    "tabsQuartiers": "Quartiers",
+    "tabsUsers": "Users",
+    "flagged": "Flagged reports",
+    "approve": "Approve",
+    "remove": "Remove",
+    "quartierList": "Manage quartier list",
+    "block": "Block",
+    "unblock": "Unblock",
+    "blockedUsers": "Blocked users",
+    "empty": "Nothing pending. All clear.",
+    "locked": "Admin access required",
+    "lockedBody": "Sign in with an admin account to moderate reports and manage quartiers.",
+    "signIn": "Go to sign in"
+  }
+}
