@@ -4,67 +4,65 @@ import { clientForUser } from "../db.js";
 
 const router = Router();
 
-const otpSchema = z.object({
-  phone: z
-    .string()
-    .regex(/^\+?[0-9]{8,15}$/, "phone must be E.164-ish, e.g. +237670000000"),
+const authSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
 });
-const verifySchema = otpSchema.extend({ token: z.string().min(6).max(6) });
 
 /**
- * POST /api/auth/otp — send a 6-digit login code by SMS.
+ * POST /api/auth/signup — email + password registration (final.pdf §2:
+ * "Email + password (Supabase Auth), free").
  */
-router.post("/otp", async (req, res) => {
-  const parsed = otpSchema.safeParse(req.body);
+router.post("/signup", async (req, res) => {
+  const parsed = authSchema.safeParse(req.body);
   if (!parsed.success) {
     return res
       .status(400)
       .json({ error: "validation failed", details: parsed.error.flatten() });
   }
-
-  // Signups always go through the anon client (no user JWT yet).
   const supabase = clientForUser(null);
-  const { error } = await supabase.auth.signInWithOtp({
-    phone: parsed.data.phone,
+  const { data, error } = await supabase.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
   });
-
   if (error) {
-    return res
-      .status(400)
-      .json({ error: "otp_failed", message: error.message });
+    return res.status(400).json({ error: "signup_failed", message: error.message });
   }
-  res.json({ ok: true, message: "code sent" });
+  res.json({
+    needsConfirmation: !data.session,
+    user: data.user ? { id: data.user.id, email: data.user.email } : null,
+  });
 });
 
 /**
- * POST /api/auth/verify — exchange the SMS code for a session.
+ * POST /api/auth/login — email + password sign-in.
  */
-router.post("/verify", async (req, res) => {
-  const parsed = verifySchema.safeParse(req.body);
+router.post("/login", async (req, res) => {
+  const parsed = authSchema.safeParse(req.body);
   if (!parsed.success) {
     return res
       .status(400)
       .json({ error: "validation failed", details: parsed.error.flatten() });
   }
 
+  // Sign-ins always go through the anon client (no user JWT yet).
   const supabase = clientForUser(null);
-  const { data, error } = await supabase.auth.verifyOtp({
-    phone: parsed.data.phone,
-    token: parsed.data.token,
-    type: "sms",
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
   });
 
   if (error || !data?.session) {
     return res
       .status(401)
-      .json({ error: "invalid_code", message: error?.message });
+      .json({ error: "invalid_credentials", message: error?.message });
   }
 
   res.json({
     accessToken: data.session.access_token,
     refreshToken: data.session.refresh_token,
     expiresAt: data.session.expires_at,
-    user: { id: data.user.id, phone: data.user.phone },
+    user: { id: data.user.id, email: data.user.email },
   });
 });
 

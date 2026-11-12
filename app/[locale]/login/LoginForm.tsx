@@ -3,63 +3,47 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { createClient, isSupabaseBrowserConfigured } from "@/lib/supabase/client";
+import {
+  createClient,
+  isSupabaseBrowserConfigured,
+} from "@/lib/supabase/client";
 
-// Phone OTP flow per the PDFs: enter number → receive code → verify.
-// Wired to Supabase Auth when configured; demo mode otherwise.
+// final.pdf §3: "/login — Sign up / sign in" with Email + password
+// (Supabase Auth, free tier). Wired to Supabase when configured.
 export default function LoginForm() {
   const t = useTranslations("login");
   const router = useRouter();
-  const [step, setStep] = useState<"phone" | "code">("phone");
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const digits = phone.replace(/\D/g, "");
-  // E.164 for Cameroon (+237) — Supabase requires the full format
-  const e164 = digits.startsWith("237") ? `+${digits}` : `+237${digits}`;
-  const phoneValid = digits.length >= 9; // Cameroon numbers: 9 digits
-
-  const sendCode = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneValid) {
-      setError(t("phoneLabel"));
+    if (!email.includes("@") || password.length < 6) {
+      setError(t("invalidCredentials"));
       return;
     }
     setError(null);
+    setInfo(null);
     setBusy(true);
     try {
       if (isSupabaseBrowserConfigured()) {
         const supabase = createClient();
-        const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
-        if (error) {
-          setError(error.message);
+        if (mode === "signup") {
+          const { error } = await supabase.auth.signUp({ email, password });
+          if (error) {
+            setError(error.message);
+            return;
+          }
+          setInfo(t("confirmEmail"));
           return;
         }
-      }
-      // Demo mode (no env): jump straight to the code step
-      setStep("code");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const verify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code.replace(/\D/g, "").length !== 6) {
-      setError(t("codePlaceholder"));
-      return;
-    }
-    setError(null);
-    setBusy(true);
-    try {
-      if (isSupabaseBrowserConfigured()) {
-        const supabase = createClient();
-        const { error } = await supabase.auth.verifyOtp({
-          phone: e164,
-          token: code,
-          type: "sms",
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
         });
         if (error) {
           setError(error.message);
@@ -67,11 +51,8 @@ export default function LoginForm() {
         }
         // Session cookies are set — refresh so server components see the user
         router.refresh();
-        router.push("/");
-      } else {
-        // Demo mode: pretend success
-        router.push("/");
       }
+      router.push("/");
     } finally {
       setBusy(false);
     }
@@ -79,72 +60,68 @@ export default function LoginForm() {
 
   return (
     <div className="surface-card rounded-lg p-6">
-      {step === "phone" ? (
-        <form onSubmit={sendCode} className="flex flex-col gap-4">
-          <label htmlFor="phone" className="text-sm font-semibold text-muted">
-            {t("phoneLabel")}
-          </label>
-          <input
-            id="phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder={t("phonePlaceholder")}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="min-h-11 w-full rounded-lg border border-border bg-surface px-4 py-3 text-base outline-none focus:border-accent"
-          />
-          {error && <p className="text-sm text-status-out">{error}</p>}
+      {/* Sign in / sign up toggle — both are in scope per final.pdf §3 */}
+      <div role="tablist" className="mb-4 flex rounded-lg bg-bg p-1">
+        {(["signin", "signup"] as const).map((m) => (
           <button
-            type="submit"
-            disabled={busy}
-            className="min-h-11 w-full rounded-lg bg-accent px-6 py-3 text-base font-semibold text-white disabled:opacity-40"
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={mode === m}
+            onClick={() => {
+              setMode(m);
+              setError(null);
+              setInfo(null);
+            }}
+            className={`min-h-11 flex-1 rounded-md px-3 text-sm font-semibold transition-colors ${
+              mode === m ? "bg-accent text-white shadow-sm" : "text-muted"
+            }`}
           >
-            {busy ? "…" : t("sendCode")}
+            {m === "signin" ? t("signInButton") : t("signUpButton")}
           </button>
-        </form>
-      ) : (
-        <form onSubmit={verify} className="flex flex-col gap-4">
-          <label htmlFor="code" className="text-sm font-semibold text-muted">
-            {t("codeLabel")}
-          </label>
-          <input
-            id="code"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            placeholder={t("codePlaceholder")}
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-            className="min-h-11 w-full rounded-lg border border-border bg-surface px-4 py-3 text-center text-2xl tracking-[0.5em] outline-none focus:border-accent"
-          />
-          {error && <p className="text-sm text-status-out">{error}</p>}
-          <button
-            type="submit"
-            disabled={busy}
-            className="min-h-11 w-full rounded-lg bg-accent px-6 py-3 text-base font-semibold text-white disabled:opacity-40"
-          >
-            {busy ? "…" : t("verify")}
-          </button>
-          <div className="flex justify-between text-sm">
-            <button
-              type="button"
-              onClick={() => setStep("phone")}
-              className="text-muted hover:underline"
-            >
-              ← {t("changeNumber")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCode("")}
-              className="text-accent hover:underline"
-            >
-              {t("resend")}
-            </button>
-          </div>
-        </form>
-      )}
+        ))}
+      </div>
+
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <label htmlFor="email" className="text-sm font-semibold text-muted">
+          {t("emailLabel")}
+        </label>
+        <input
+          id="email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder={t("emailPlaceholder")}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="min-h-11 w-full rounded-lg border border-border bg-surface px-4 py-3 text-base outline-none focus:border-accent"
+        />
+        <label htmlFor="password" className="text-sm font-semibold text-muted">
+          {t("passwordLabel")}
+        </label>
+        <input
+          id="password"
+          type="password"
+          autoComplete={mode === "signup" ? "new-password" : "current-password"}
+          placeholder={t("passwordPlaceholder")}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="min-h-11 w-full rounded-lg border border-border bg-surface px-4 py-3 text-base outline-none focus:border-accent"
+        />
+        {error && <p className="text-sm text-status-out">{error}</p>}
+        {info && <p className="text-sm text-status-ok">{info}</p>}
+        <button
+          type="submit"
+          disabled={busy}
+          className="min-h-11 w-full rounded-lg bg-accent px-6 py-3 text-base font-semibold text-white disabled:opacity-40"
+        >
+          {busy
+            ? "…"
+            : mode === "signup"
+              ? t("signUpButton")
+              : t("signInButton")}
+        </button>
+      </form>
 
       <p className="mt-4 text-center text-sm text-muted">{t("note")}</p>
     </div>

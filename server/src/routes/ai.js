@@ -55,7 +55,10 @@ router.post("/parse", requireAuth, async (req, res) => {
   const names = (quartierRows ?? []).map((r) => r.name);
 
   try {
-    const result = await parseReport(parsed.data.text, names);
+    // Privacy guardrail (PDF §7): strip phone numbers before the text
+    // reaches the AI — only the outage description is ever sent.
+    const clean = parsed.data.text.replace(/(?:\+?\d[\d\s().-]{7,}\d)/g, " ");
+    const result = await parseReport(clean, names);
 
     // Record usage — best effort, never blocks the response.
     await req.supabase.from("ai_usage").insert({ user_id: req.user.id });

@@ -18,7 +18,7 @@ const bodySchema = z.object({
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
 
-  // Must be signed in (phone OTP)
+  // Must be signed in (email + password auth)
   const {
     data: { user },
   } = await supabase.auth.getUser();

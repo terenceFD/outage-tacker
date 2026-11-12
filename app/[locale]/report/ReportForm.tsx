@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 export interface QuartierOption {
@@ -9,66 +9,112 @@ export interface QuartierOption {
   city: string;
 }
 
+interface Prefill {
+  type?: "power" | "water";
+  quartierId?: string | null;
+  status?: "out" | "restored";
+}
+
+/** Read + clear the assistant's handoff draft (client-side only). */
+function readPrefill(): Prefill | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem("reportPrefill");
+    if (!raw) return null;
+    sessionStorage.removeItem("reportPrefill");
+    return JSON.parse(raw) as Prefill;
+  } catch {
+    return null; // malformed prefill — ignore, form stays empty
+  }
+}
+
+/**
+ * The 3-tap report form (final.pdf §3): pick type (light / water),
+ * quartier, status (out / back on), send. Target: 3 taps, under 10
+ * seconds. This form never calls the AI — the assistant lives on
+ * /assistant (final.pdf: "The one-tap form from the MVP stays as the
+ * main flow").
+ *
+ * Prefill: the assistant page stores a draft in sessionStorage
+ * ("reportPrefill") when the user taps "Change" — it is picked up here
+ * so the user never has to re-enter what was already understood.
+ */
+function StepLabel({ num, children }: { num: number; children: ReactNode }) {
+  return (
+    <legend className="mb-3 flex items-center gap-2">
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">
+        {num}
+      </span>
+      <span className="text-sm font-semibold tracking-wide">{children}</span>
+    </legend>
+  );
+}
+
 export default function ReportForm({
   quartiers,
 }: {
   quartiers: QuartierOption[];
 }) {
   const t = useTranslations("report");
-  const [type, setType] = useState<"power" | "water" | null>(null);
-  const [quartier, setQuartier] = useState<string | null>(null);
-  const [status, setStatus] = useState<"out" | "restored" | null>(null);
+
+  // Prefill handed over from the AI assistant ("Change" → 3-tap form).
+  // Read lazily in the state initializer — mounted once per client visit.
+  const prefill = readPrefill();
+  const [type, setType] = useState<"power" | "water" | null>(
+    prefill?.type ?? null,
+  );
+  const [quartier, setQuartier] = useState<string | null>(
+    prefill?.quartierId ?? null,
+  );
+  const [status, setStatus] = useState<"out" | "restored" | null>(
+    prefill?.status ?? null,
+  );
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // AI describe tab (PDF §6 — source=chat)
-  const [mode, setMode] = useState<"buttons" | "chat">("buttons");
-  const [chatText, setChatText] = useState("");
-  const [parsing, setParsing] = useState(false);
-  const [aiDraft, setAiDraft] = useState<{
-    type: "light" | "water";
-    status: "out" | "restored";
-    quartierId: string | null;
-    quartierName: string | null;
-    confidence: number;
-  } | null>(null);
-
   if (sent) {
     return (
-      <div className="mt-10 text-center">
-        <p className="text-2xl">✅</p>
-        <p className="mt-3 text-lg font-semibold text-status-ok">{t("sent")}</p>
+      <div className="surface-card mt-6 flex flex-col items-center rounded-2xl border border-border px-6 py-12 text-center shadow-sm">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-status-ok/10 text-3xl">
+          ✅
+        </div>
+        <p className="mt-4 text-xl font-bold text-status-ok">{t("sent")}</p>
+        <p className="mt-2 max-w-xs text-sm text-muted">{t("sentSub")}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setSent(false);
+            setType(null);
+            setQuartier(null);
+            setStatus(null);
+          }}
+          className="min-h-11 mt-6 w-full max-w-xs rounded-xl bg-accent px-6 py-3 text-base font-semibold text-white"
+        >
+          {t("reportAnother")}
+        </button>
       </div>
     );
   }
 
-  const stepClass = (selected: boolean) =>
-    selected
-      ? "border-accent bg-accent text-white font-semibold"
-      : "border-border bg-surface";
-
-  /** Shared submit used by both the 3-tap flow and the AI confirm flow. */
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!type || !quartier || !status) return;
-    setSending(true);
+  /** Shared submit used by the 3-tap flow. */
+  const sendReport = async (payload: {
+    quartierId: string | null;
+    type: "light" | "water";
+    status: "out" | "restored";
+    source: "app" | "chat";
+    rawText: string | null;
+    aiConfidence: number | null;
+  }): Promise<boolean> => {
     setErrorMsg(null);
     try {
       const res = await fetch("/api/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          quartierId: quartier,
-          type: type === "power" ? "light" : "water",
-          status: status === "out" ? "out" : "restored",
-          ...(mode === "chat"
-            ? { source: "chat", rawText: chatText, aiConfidence: aiDraft?.confidence }
-            : {}),
-        }),
+        body: JSON.stringify(payload),
       });
       if (res.status === 201) {
-        setSent(true);
+        return true;
       } else if (res.status === 429) {
         setErrorMsg(t("rateLimitNote"));
       } else if (res.status === 401) {
@@ -79,173 +125,75 @@ export default function ReportForm({
       }
     } catch {
       setErrorMsg("Network error");
-    } finally {
-      setSending(false);
     }
-  };
-
-  /** Ask Gemini to parse free text → prefill the 3-step draft. */
-  const parseWithAi = async () => {
-    if (chatText.trim().length < 3) return;
-    setParsing(true);
-    setErrorMsg(null);
-    try {
-      const res = await fetch("/api/ai-parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: chatText,
-          quartiers: quartiers.map((q) => q.name),
-        }),
-      });
-      if (!res.ok) {
-        setErrorMsg(res.status === 503 ? "AI not configured" : "AI error");
-        return;
-      }
-      const ai = (await res.json()) as {
-        type: "light" | "water";
-        status: "out" | "restored";
-        quartierName: string | null;
-        confidence: number;
-      };
-      const match = quartiers.find(
-        (q) => ai.quartierName && q.name.toLowerCase() === ai.quartierName.toLowerCase()
-      );
-      setAiDraft({
-        type: ai.type,
-        status: ai.status,
-        quartierId: match?.id ?? null,
-        quartierName: match?.name ?? ai.quartierName,
-        confidence: ai.confidence,
-      });
-    } catch {
-      setErrorMsg("Network error");
-    } finally {
-      setParsing(false);
-    }
+    return false;
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-6">
-      {/* Mode tabs: buttons vs describe-it (wireframe screen 2) */}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setMode("buttons")}
-          className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${
-            mode === "buttons" ? "bg-accent text-white" : "surface-card text-muted"
-          }`}
-        >
-          {t("step1")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("chat")}
-          className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${
-            mode === "chat" ? "bg-accent text-white" : "surface-card text-muted"
-          }`}
-        >
-          💬 {t("describeTab")}
-        </button>
-      </div>
-
-      {mode === "chat" && !aiDraft && (
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted">{t("describeIntro")}</p>
-          <textarea
-            value={chatText}
-            onChange={(e) => setChatText(e.target.value)}
-            rows={3}
-            maxLength={280}
-            placeholder={t("describePlaceholder")}
-            className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-base outline-none focus:border-accent"
-          />
-          <button
-            type="button"
-            onClick={parseWithAi}
-            disabled={parsing || chatText.trim().length < 3}
-            className="min-h-11 w-full rounded-lg bg-accent px-6 py-3 text-base font-semibold text-white disabled:opacity-40"
-          >
-            {parsing ? "…" : `🤖 ${t("describeSend")}`}
-          </button>
-        </div>
-      )}
-
-      {mode === "chat" && aiDraft && (
-        <div className="surface-card rounded-lg p-4">
-          <p className="text-sm font-semibold text-status-ok">{t("confidenceOk")}</p>
-          <p className="mt-2 text-base">
-            {aiDraft.type === "light" ? "⚡ Power" : "💧 Water"} ·{" "}
-            {aiDraft.status === "out" ? t("statusOut") : t("statusBack")} ·{" "}
-            {aiDraft.quartierName ?? "?"}
-          </p>
-          <p className="mt-1 text-sm text-muted">
-            {Math.round(aiDraft.confidence * 100)}%
-          </p>
-          <p className="mt-3 font-medium">{t("confidenceAsk")}</p>
-          <div className="mt-2 flex gap-3">
-            <button
-              type="submit"
-              disabled={!aiDraft.quartierId || sending}
-              className="min-h-11 flex-1 rounded-lg bg-accent px-4 py-3 text-base font-semibold text-white disabled:opacity-40"
-            >
-              {sending ? "…" : t("yes")}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAiDraft(null);
-                setChatText("");
-              }}
-              className="min-h-11 flex-1 rounded-lg border-2 border-border px-4 py-3 text-base font-semibold"
-            >
-              {t("change")}
-            </button>
-          </div>
-          {!aiDraft.quartierId && (
-            <p className="mt-2 text-xs text-status-out">
-              Quartier not recognized — use the buttons tab to pick it manually.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* 3-tap flow (hidden while the AI draft confirm card is shown) */}
-      <div className={mode === "chat" && aiDraft ? "hidden" : "contents"}>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void (async () => {
+          if (!type || !quartier || !status) return;
+          setSending(true);
+          const ok = await sendReport({
+            quartierId: quartier,
+            type: type === "power" ? "light" : "water",
+            status: status === "out" ? "out" : "restored",
+            source: "app",
+            rawText: null,
+            aiConfidence: null,
+          });
+          if (ok) setSent(true);
+          setSending(false);
+        })();
+      }}
+      className="flex flex-col gap-6"
+    >
       {/* Step 1: type */}
       <fieldset>
-        <legend className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          {t("step1")}
-        </legend>
-        <div className="flex gap-3">
+        <StepLabel num={1}>{t("step1")}</StepLabel>
+        <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={() => setType("power")}
-            className={`min-h-11 flex-1 rounded-lg border-2 px-4 py-3 text-base ${stepClass(type === "power")}`}
+            className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-4 py-4 transition-all ${
+              type === "power"
+                ? "border-accent bg-accent text-white shadow-md"
+                : "border-border bg-surface hover:border-accent/50"
+            }`}
             style={type === "power" ? undefined : { color: "var(--power)" }}
           >
-            ⚡ Power
+            <span className="text-2xl">⚡</span>
+            <span className="text-sm font-semibold">{t("servicePower")}</span>
           </button>
           <button
             type="button"
             onClick={() => setType("water")}
-            className={`min-h-11 flex-1 rounded-lg border-2 px-4 py-3 text-base ${stepClass(type === "water")}`}
+            className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-4 py-4 transition-all ${
+              type === "water"
+                ? "border-accent bg-accent text-white shadow-md"
+                : "border-border bg-surface hover:border-accent/50"
+            }`}
             style={type === "water" ? undefined : { color: "var(--water)" }}
           >
-            💧 Water
+            <span className="text-2xl">💧</span>
+            <span className="text-sm font-semibold">{t("serviceWater")}</span>
           </button>
         </div>
       </fieldset>
 
       {/* Step 2: quartier */}
       <fieldset disabled={!type}>
-        <legend className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          {t("step2")}
-        </legend>
+        <StepLabel num={2}>{t("step2")}</StepLabel>
         <select
           value={quartier ?? ""}
           onChange={(e) => setQuartier(e.target.value || null)}
-          className={`w-full rounded-lg border-2 px-4 py-3 text-base ${stepClass(!!quartier)}`}
+          className={`min-h-12 w-full rounded-xl border-2 px-4 py-3 text-base shadow-sm transition-colors ${
+            quartier
+              ? "border-accent bg-accent/5 font-medium"
+              : "border-border bg-surface"
+          } ${!type ? "opacity-50" : ""}`}
         >
           <option value="">{t("chooseQuartier")}</option>
           {quartiers.map((q) => (
@@ -258,21 +206,27 @@ export default function ReportForm({
 
       {/* Step 3: status */}
       <fieldset disabled={!quartier}>
-        <legend className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          {t("step3")}
-        </legend>
-        <div className="flex gap-3">
+        <StepLabel num={3}>{t("step3")}</StepLabel>
+        <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={() => setStatus("out")}
-            className={`min-h-11 flex-1 rounded-lg border-2 px-4 py-3 text-base ${stepClass(status === "out")}`}
+            className={`flex min-h-14 items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-semibold transition-all ${
+              status === "out"
+                ? "border-status-out bg-status-out/10 text-status-out shadow-sm"
+                : "border-border bg-surface hover:border-status-out/50"
+            } ${!quartier ? "opacity-50" : ""}`}
           >
             🔌 {t("statusOut")}
           </button>
           <button
             type="button"
             onClick={() => setStatus("restored")}
-            className={`min-h-11 flex-1 rounded-lg border-2 px-4 py-3 text-base ${stepClass(status === "restored")}`}
+            className={`flex min-h-14 items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-semibold transition-all ${
+              status === "restored"
+                ? "border-status-ok bg-status-ok/10 text-status-ok shadow-sm"
+                : "border-border bg-surface hover:border-status-ok/50"
+            } ${!quartier ? "opacity-50" : ""}`}
           >
             ✅ {t("statusBack")}
           </button>
@@ -283,18 +237,20 @@ export default function ReportForm({
       <button
         type="submit"
         disabled={!type || !quartier || !status || sending}
-        className="min-h-11 w-full rounded-lg bg-accent px-6 py-3 text-base font-semibold text-white disabled:opacity-40"
+        className="min-h-12 w-full rounded-xl bg-accent px-6 py-3 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {sending ? "…" : t("send")}
       </button>
-      {errorMsg && <p className="text-center text-sm text-status-out">{errorMsg}</p>}
+
+      {errorMsg && (
+        <p className="text-center text-sm text-status-out">{errorMsg}</p>
+      )}
 
       <p className="text-center text-sm text-muted">
         {t("rateLimitNote")}
         <br />
         {t("otpNote")}
       </p>
-      </div>
     </form>
   );
 }

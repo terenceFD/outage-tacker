@@ -14,10 +14,23 @@ export interface Quartier {
 export interface Profile {
   id: string;
   phone: string | null;
+  email: string | null;
   language: "en" | "fr";
   home_quartier_id: string | null;
   role: "user" | "admin";
   is_blocked: boolean;
+  created_at: string;
+}
+
+// PDF §8 "subscriptions": id, user_id, quartier_id, type, channel
+export type AlertChannel = "whatsapp" | "sms";
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  quartier_id: string;
+  type: ReportType;
+  channel: AlertChannel;
   created_at: string;
 }
 
@@ -54,13 +67,42 @@ export interface QuartierStatusRow {
 export interface Database {
   public: {
     Tables: {
-      quartiers: { Row: Quartier };
-      profiles: { Row: Profile };
-      reports: { Row: Report };
+      quartiers: {
+        Row: Quartier;
+        Insert: Omit<Quartier, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Quartier>;
+      };
+      profiles: {
+        Row: Profile;
+        Insert: Omit<Profile, "created_at"> & { created_at?: string };
+        Update: Partial<Profile>;
+      };
+      reports: {
+        Row: Report;
+        Insert: Omit<Report, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Report>;
+      };
+      subscriptions: {
+        Row: Subscription;
+        Insert: Omit<Subscription, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Subscription>;
+      };
     };
     Views: {
       quartier_statuses: { Row: QuartierStatusRow };
     };
+    // Other tables (confirmations, incidents, push_subscriptions,
+    // ai_usage) are only touched via RLS-safe SQL/RPC — see
+    // supabase/migrations/0001 + 0002.
     Functions: {
       insert_report: {
         Args: {

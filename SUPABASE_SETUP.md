@@ -43,16 +43,27 @@ Copy-Item .env.local.example .env.local
 # then edit .env.local with your values
 ```
 
-## 4. Enable phone OTP auth
+## 4. Enable email + password auth
 
-**Authentication → Providers → Phone**: enable it. Note: SMS OTP via Supabase
-needs a messaging provider (Twilio/Vonage = paid, which conflicts with the
-"everything free" rule). For the pilot either:
+**Authentication → Providers → Email**: keep it enabled (it is by default).
+The admin portal signs in with email + password — phone OTP/SMS login has been
+removed. Create admin accounts under **Authentication → Users** (Add user →
+enter email + password, auto-confirm), then grant them the admin role:
 
-- add a few test users manually under **Authentication → Users** (Add user →
-  enter phone, auto-confirm), or
-- temporarily sign up with **Email OTP** (free) — the schema works identically;
-  `profiles.phone` is populated by the signup trigger either way.
+```sql
+update public.profiles set role = 'admin' where id = '<user-uuid>';
+```
+
+A ready-made admin account is seeded by **migration 0003**
+(`supabase/migrations/0003_seed_admin.sql`):
+
+| Field    | Value                     |
+| -------- | ------------------------- |
+| Email    | `terencetimah3@gmail.com` |
+| Password | `mastering67`             |
+
+Run it after 0001/0002 (SQL Editor in the Supabase dashboard, or
+`supabase db push`). Change the password after the first sign-in.
 
 ## 5. Verify it works
 

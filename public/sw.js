@@ -1,5 +1,7 @@
 // Offline shell: cache-first for static assets, network-first for pages.
-const CACHE = "outage-tracker-v2";
+// Web push per final.pdf §2 (Alerts = Web Push, VAPID) and §3 (/alerts
+// "enable push"): push + notificationclick handlers live here.
+const CACHE = "outage-tracker-v3";
 const ASSETS = ["/", "/manifest.webmanifest", "/offline.html", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -57,4 +59,39 @@ self.addEventListener("fetch", (event) => {
         ),
     );
   }
+});
+
+// ---- Web push (final.pdf: "Web Push alerts for saved quartiers") ----
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { title: "Outage Tracker", body: event.data?.text() ?? "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title || "Outage Tracker", {
+      body: payload.body ?? "",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: payload.tag, // collapse repeats for the same quartier+type
+      data: payload.url ? { url: payload.url } : undefined,
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      for (const w of wins) {
+        if ("focus" in w) {
+          w.navigate(url);
+          return w.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
 });

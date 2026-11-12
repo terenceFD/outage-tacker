@@ -260,3 +260,157 @@ export async function getQuartierDetail(
     rows.find((r) => r.name.toLowerCase() === name.toLowerCase()) ?? null;
   return { summary, live };
 }
+
+/** A single recent report, for display on the quartier detail page. */
+export interface RecentReport {
+  id: string;
+  type: "light" | "water";
+  status: "out" | "restored";
+  createdAt: string;
+  minutesAgo: number;
+  confirmations: number;
+}
+
+/**
+ * Live recent reports for one quartier (last 12 h), for /quartier/[id].
+ * Returns the freshest-per-type report too, used as the "Me too" target.
+ */
+export async function getRecentReports(
+  name: string,
+): Promise<{ reports: RecentReport[]; activeReportId: string | null; live: boolean }> {
+  if (!isSupabaseConfigured()) {
+    return { reports: [], activeReportId: null, live: false };
+  }
+  try {
+    const supabase = await createClient();
+
+    // Resolve the quartier ids with this name (city variants share names)
+    const { data: quarts, error: qErr } = await supabase
+      .from("quartiers")
+      .select("id")
+      .ilike("name", name);
+    if (qErr || !quarts || quarts.length === 0) {
+      return { reports: [], activeReportId: null, live: false };
+    }
+    const ids = (quarts as unknown as { id: string }[]).map((q) => q.id);
+
+    const since = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from("reports")
+      .select(
+        "id, type, status, created_at, confirmations(count)",
+      )
+      .in("quartier_id", ids)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error || !data) {
+      return { reports: [], activeReportId: null, live: false };
+    }
+
+    type Row = {
+      id: string;
+      type: "light" | "water";
+      status: "out" | "restored";
+      created_at: string;
+      confirmations: { count: number }[] | null;
+    };
+
+    const reports: RecentReport[] = (data as unknown as Row[]).map((r) => ({
+      id: r.id,
+      type: r.type,
+      status: r.status,
+      createdAt: r.created_at,
+      minutesAgo: Math.max(
+        0,
+        Math.floor((Date.now() - new Date(r.created_at).getTime()) / 60000),
+      ),
+      confirmations: r.confirmations?.[0]?.count ?? 0,
+    }));
+
+    // The freshest "out" report is the confirmation target (one per type —
+    // the detail page is per-type, so pick the newest out overall)
+    const active = reports.find((r) => r.status === "out") ?? null;
+
+    return { reports, activeReportId: active?.id ?? null, live: true };
+  } catch {
+    return { reports: [], activeReportId: null, live: false };
+  }
+}
+
+/** Hours without service per day, last 7 days — from incident history. */
+export async function getWeeklyOutageHours(
+  name: string,
+): Promise<{ days: { day: string; hours: number }[]; live: boolean }> {
+  const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+  const empty = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 24 * 3600 * 1000);
+    return { day: DAY_LABELS[d.getDay()], hours: 0 };
+  });
+
+  if (!isSupabaseConfigured()) return { days: empty, live: false };
+
+  try {
+    const supabase = await createClient();
+    const { data: quarts, error: qErr } = await supabase
+      .from("quartiers")
+      .select("id")
+      .ilike("name", name);
+    if (qErr || !quarts || quarts.length === 0) {
+      return { days: empty, live: false };
+    }
+
+    const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from("incidents")
+      .select("started_at, ended_at")
+      .in(
+        "quartier_id",
+        (quarts as unknown as { id: string }[]).map((q) => q.id),
+      )
+      .gte("started_at", since)
+      .not("ended_at", "is", null);
+
+    if (error || !data) return { days: empty, live: false };
+
+    // Bucket closed incidents by local calendar day
+    const hoursByDay = new Map<string, number>();
+    const dayKeys: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 3600 * 1000);
+      const key = d.toISOString().slice(0, 10);
+      dayKeys.push(key);
+      hoursByDay.set(key, 0);
+    }
+
+    let sawData = false;
+    for (const inc of data as { started_at: string; ended_at: string | null }[]) {
+      if (!inc.ended_at) continue;
+      sawData = true;
+      const start = new Date(inc.started_at);
+      const end = new Date(inc.ended_at);
+      // Attribute the whole incident to its start day (incidents rarely
+      // span midnight here; good enough for a 7-day overview)
+      const key = start.toISOString().slice(0, 10);
+      if (hoursByDay.has(key)) {
+        hoursByDay.set(
+          key,
+          (hoursByDay.get(key) ?? 0) + (end.getTime() - start.getTime()) / 3600000,
+        );
+      }
+    }
+
+    if (!sawData) return { days: empty, live: false };
+
+    return {
+      days: dayKeys.map((key, i) => ({
+        day: DAY_LABELS[new Date(key).getDay()],
+        hours: Math.round((hoursByDay.get(key) ?? 0) * 10) / 10,
+      })),
+      live: true,
+    };
+  } catch {
+    return { days: empty, live: false };
+  }
+}

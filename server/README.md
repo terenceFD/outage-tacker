@@ -21,8 +21,7 @@ Serves on `http://localhost:4000` (configurable via `PORT`).
 | Method          | Path                          | Auth           | Description                                                   |
 | --------------- | ----------------------------- | -------------- | ------------------------------------------------------------- |
 | GET             | `/api/health`                 | —              | liveness check                                                |
-| POST            | `/api/auth/otp`               | —              | send 6-digit SMS login code                                   |
-| POST            | `/api/auth/verify`            | —              | exchange code for session tokens                              |
+| POST            | `/api/auth/login`             | —              | email + password sign-in, returns session tokens              |
 | POST            | `/api/auth/refresh`           | —              | rotate access token                                           |
 | POST            | `/api/auth/logout`            | —              | invalidate a session                                          |
 | GET             | `/api/quartiers`              | —              | official quartier list (`?city=`)                             |

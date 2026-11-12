@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { routing } from "@/i18n/routing";
+import { SessionProvider } from "@/lib/useSession";
 
 // Fonts, metadata and the <html>/<body> shell live in the root app/layout.tsx.
 // This layout adds i18n validation and the translation provider.
@@ -20,5 +21,9 @@ export default async function LocaleLayout({
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
 
-  return <NextIntlClientProvider>{children}</NextIntlClientProvider>;
+  return (
+    <NextIntlClientProvider>
+      <SessionProvider>{children}</SessionProvider>
+    </NextIntlClientProvider>
+  );
 }

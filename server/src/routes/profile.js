@@ -17,6 +17,13 @@ const pushSchema = z.object({
   keys: z.record(z.string()),
 });
 
+// PDF §8: subscriptions — id, user_id, quartier_id, type, channel (whatsapp/sms)
+const subscriptionSchema = z.object({
+  quartierId: z.string().uuid(),
+  type: z.enum(["light", "water"]),
+  channel: z.enum(["whatsapp", "sms"]),
+});
+
 /** GET /api/profile — own profile (RLS: owner or admin only). */
 router.get("/", requireAuth, async (req, res) => {
   const { data, error } = await req.supabase
@@ -109,6 +116,85 @@ router.post("/subscriptions", requireAuth, async (req, res) => {
       .json({ error: "db_error", message: mapped.msg });
   }
   res.status(201).json({ ok: true });
+});
+
+// ------------------------------------------------------------------
+// WhatsApp/SMS alert subscriptions (PDF §8 "subscriptions" table).
+// These are the user-facing alert preferences; push_subscriptions
+// above stays for browser web-push.
+// ------------------------------------------------------------------
+
+/** GET /api/profile/subscriptions/all — my WhatsApp/SMS subscriptions. */
+router.get("/subscriptions/all", requireAuth, async (req, res) => {
+  const { data, error } = await req.supabase
+    .from("subscriptions")
+    .select("id, quartier_id, type, channel, created_at")
+    .eq("user_id", req.user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    const mapped = mapDbError(error);
+    return res
+      .status(mapped.status)
+      .json({ error: "db_error", message: mapped.msg });
+  }
+  res.json({ subscriptions: data });
+});
+
+/** POST /api/profile/subscriptions/subscribe — save a quartier alert. */
+router.post("/subscriptions/subscribe", requireAuth, async (req, res) => {
+  const parsed = subscriptionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res
+      .status(400)
+      .json({ error: "validation failed", details: parsed.error.flatten() });
+  }
+  const b = parsed.data;
+
+  const { error } = await req.supabase.from("subscriptions").upsert(
+    {
+      user_id: req.user.id,
+      quartier_id: b.quartierId,
+      type: b.type,
+      channel: b.channel,
+    },
+    { onConflict: "user_id,quartier_id,type,channel" },
+  );
+
+  if (error) {
+    const mapped = mapDbError(error);
+    return res
+      .status(mapped.status)
+      .json({ error: "db_error", message: mapped.msg });
+  }
+  res.status(201).json({ ok: true });
+});
+
+/** DELETE /api/profile/subscriptions/subscribe — remove one alert row. */
+router.delete("/subscriptions/subscribe", requireAuth, async (req, res) => {
+  const parsed = subscriptionSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res
+      .status(400)
+      .json({ error: "validation failed", details: parsed.error.flatten() });
+  }
+  const b = parsed.data;
+
+  const { error } = await req.supabase
+    .from("subscriptions")
+    .delete()
+    .eq("user_id", req.user.id)
+    .eq("quartier_id", b.quartierId)
+    .eq("type", b.type)
+    .eq("channel", b.channel);
+
+  if (error) {
+    const mapped = mapDbError(error);
+    return res
+      .status(mapped.status)
+      .json({ error: "db_error", message: mapped.msg });
+  }
+  res.json({ ok: true });
 });
 
 /** DELETE /api/profile/subscriptions — remove by endpoint. */

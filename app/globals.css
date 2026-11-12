@@ -42,6 +42,15 @@
 body {
   font-family: var(--font-body);
 }
+/* Make every interactive control show the pointer cursor
+   (Tailwind v4 removed the default button:pointer) */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+label[for],
+a,
+summary {
+  cursor: pointer;
+}
 
 /* Card on the page background (PDF: cards sit on --color-bg) */
 .surface-card {
@@ -93,4 +102,47 @@ h6 {
   --border: #2a3b4a;
   --text: #e8eef3;
   --muted: #9fb0be;
+}
+
+/* Leaflet popup used on the live map (matches .surface-card look) */
+.ot-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+.ot-popup strong {
+  font-family: var(--font-heading);
+  font-size: 15px;
+}
+.ot-popup-status {
+  align-self: flex-start;
+  border-radius: 9999px;
+  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ot-popup-out {
+  background-color: var(--status-out);
+  color: #fff;
+}
+.ot-popup-unconfirmed {
+  background-color: var(--status-unconfirmed);
+  color: var(--text);
+}
+.ot-popup-ok {
+  background-color: var(--status-ok);
+  color: #fff;
+}
+.ot-popup-unknown {
+  background-color: var(--status-unknown);
+  color: #fff;
+}
+.ot-popup a {
+  margin-top: 4px;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
 }

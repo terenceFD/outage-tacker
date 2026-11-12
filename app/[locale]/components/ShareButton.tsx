@@ -2,27 +2,28 @@
 
 import { useTranslations } from "next-intl";
 
-// PDF: "share status card (image + short text) optimized for WhatsApp"
-// — for now, native share / clipboard fallback.
-export default function ShareButton() {
+// final.pdf §1 MVP scope: "Share status via WhatsApp link (wa.me, free)."
+// Opens WhatsApp with a pre-filled message — no paid API involved.
+export default function ShareButton({
+  text,
+}: {
+  /** Share text, e.g. "Bonamoussadi: No power, 14 reports, 3h20m" */
+  text?: string;
+}) {
   const t = useTranslations();
+  const message =
+    text ??
+    "Outage Tracker — most outage hours this month: Bonamoussadi 42h, Akwa 35h, Bepanda 28h";
+  const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
   return (
-    <button
-      type="button"
-      onClick={async () => {
-        const text =
-          "Outage Tracker — most outage hours this month: Bonamoussadi 42h, Akwa 35h, Bepanda 28h";
-        if (navigator.share) {
-          await navigator
-            .share({ title: "Outage Tracker", text })
-            .catch(() => {});
-        } else {
-          await navigator.clipboard.writeText(text).catch(() => {});
-        }
-      }}
+    <a
+      href={waUrl}
+      target="_blank"
+      rel="noopener noreferrer"
       className="mt-4 flex min-h-11 w-full items-center justify-center rounded-lg border-2 border-accent px-6 py-3 text-base font-semibold text-accent"
     >
-      ↗ {t("stats.share")}
-    </button>
+      🟢 {t("stats.share")}
+    </a>
   );
 }
